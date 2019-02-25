@@ -284,7 +284,7 @@ J'ai regarder mais j'ai pas essayer :)
         2  10.1.2.1 (10.1.2.1)  0.285 ms  0.243 ms  0.356 ms
         ``` 
 
-        Et bien, on passe par la gateway (10.1.2.1) puis par net2 (10.1.2.1).
+        Et bien, on passe par la gateway (10.0.2.2) puis par net2 (10.1.2.1).
 
         
 
