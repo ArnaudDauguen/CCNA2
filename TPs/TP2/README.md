@@ -106,7 +106,7 @@ On parle de toutes les VMs :
     ```
     * il y a toute fois quelques trucs à changer pour chaques machines (on changera juste les ip des routers pour passer par les bonnes routes)
 
-J'Y SUIS LA....
+J'Y SUIS LA..
 
 ---
 
