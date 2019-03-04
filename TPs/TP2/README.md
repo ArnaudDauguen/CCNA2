@@ -104,22 +104,13 @@ On parle de toutes les VMs :
     10.2.1.254  router1 router1.net12 router1.net12.b2
     10.2.12.3   router2 router2.net12 router2.net12.b2
     ```
-    * il y a toute fois quelques trucs à changer pour chaques machines (on changera juste les ip des routers pour passer par les bonnes routes)
-
-J'Y SUIS LA..
+    * il y a toute fois quelques trucs à changer pour chaques machines (on changera juste les ip pour les routers pour passer par les bonnes routes)
 
 ---
 
-## 2. Routage statique
+## 2. Routage statique 
 
-Vous allez ajouter des routes statiques sur les machines agissant comme routeurs, mais aussi sur les clients. 
-
-Avant tout, sur **router1** et **router2**, activez l'IPv4 forwarding qui permettra à votre VM de traiter des paquets IP qui ne lui sont pas destinés. En d'autres termes **vous transformez votre machine en routeur**. GG. :fire:  
-
-* activation de l'IPv4 Forwarding
-  * `sudo sysctl -w net.ipv4.conf.all.forwarding=1`
-
-Pour ajouter des routes statiques, vous pouvez vous référer à [la section dédiée dans page de procédures CentOS 7](../../cours/procedures.md#ajouter-une-route-statique).
+* activation de l'IPv4 Forwarding (**router1** et **router2**) pour faire voyager des packets
 
 * sur `router1`
   * ajouter une route vers `net2`
@@ -129,22 +120,26 @@ Pour ajouter des routes statiques, vous pouvez vous référer à [la section dé
 * sur `router2`
   * ajouter une route vers `net1`
   * en vous servant de l'IP de `router1` dans `net12` comme passerelle
+  * `sudo ip route add 10.2.1.0/24 via 10.2.12.2 dev enp0s8`
 * sur `client1`
   * ajouter une route vers `net2`
+  * `sudo ip route add 10.2.2.0/24 via 10.2.1.254 dev enp0s8`
 * sur `server1`
   * ajouter une route vers `net1`
+  * `sudo ip route add 10.2.1.0/24 via 10.2.2.254 dev enp0s8`
 
 Une fois en place :
-  * `client1` et `server1` peuvent se `ping`
-    * alors qu'ils ne connaissent pas l'adresse de `net12`
-    * pourtant leurs messages passent bien par `net12`
-    * :fire:
+  ```
+  [it4@server1 ~]$ ping client1
+  PING client1 (10.2.1.10) 56(84) bytes of data.
+  64 bytes from client1 (10.2.1.10): icmp_seq=1 ttl=62 time=3.67 ms
+  64 bytes from client1 (10.2.1.10): icmp_seq=2 ttl=62 time=5.35 ms
+  64 bytes from client1 (10.2.1.10): icmp_seq=3 ttl=62 time=4.37 ms
+  ```
 
 ---
 
 ## 3. Visualisation du routage avec Wireshark
-
-> Pour rappel, lorsque vous utilisez Wireshark, évitez de faire du SSH sur l'interface où vous capturez le trafic, ça évitera la pollution dans vos captures.
 
 Vos captures captureront un `ping` entre `router1` et `server1`. **Le `ping` devra donc passer par `router2`.**
 
@@ -154,40 +149,24 @@ But :
 * capturer le trafic qui passe sur `router2`
   * en utilisant `tcpdump`
   * une capture pour l'interface qui est dans `net12`
+  ![lien de la capture](./relatives/net12_packets.PNG 'lien de la capture')
   * une autre capture pour l'interface qui est dans `net2`
+  ![lien de la capture](./relatives/net2_packets.PNG 'lien de la capture')
   * expliquer la différence
-
-> Les captures devraient être très simples : uniquement les ping/pong et éventuellement un peu d'ARP
-
-> Les deux captures doivent figurer dans le rendu
-
+    * Les MACs de destination et de source changent entre les deux captures, le routeur à donc fait son job (petit screen à l'appuie).
+    ![lien de la capture](./relatives/net2.PNG 'lien de la capture')
+    ![lien de la capture](./relatives/net12.PNG 'lien de la capture')
 ---
 
 # II. NAT et services d'infra
 
 Dans cette partie on va se rapprocher un peu de ce qu'on peut voir dans des infras réelles. Quelques services récurrents et indispensables, ainsi qu ele concept de NAT.
 
-* le [**NAT**](#1-mise-en-place-du-nat) permet à un réseau d'IP privées de joindre des IPs publiques
-  * on en a donc besoin dans tous les LANs du monde
-  * chez vous
-  * n'importe quelle entreprise
-  * etc
-
-* un serveur [**DHCP**](#2-dhcp-server) permet d'attribuer automatiquement des IPs aux clients
-  * cela permet de ne pas avoir à les saisir à la main, de façon *statique*
-  * un serveur DHCP peut aussi donner d'autres infos (cf. la partie du TP dédiée)
-
-* le [**NTP**](#3-ntp-server) est un protocole qui permet de synchroniser l'heure des serveurs
-
-* les **[serveurs Web](#4-web-server)** sont partout de nos jours, on en montera régulièrement pour symboliser/simuler un serveur d'infra
-  * on en trouve partout sur internet
-  * mais aussi dans les services d'infra, le pilotage des outils se fait de plus en plus via HTTP (= serveur web)
-
 ## 1. Mise en place du NAT
 
 ### Présentation
 
-**"Faire du NAT" est un rôle que peut jouer un [routeur]../../cours/lexique.md#routeur)** :
+**"Faire du NAT" est un rôle que peut jouer un routeur"** :
 * qui possède une interface qui peut joindre le WAN
   * dans lequel on trouve des IPs publiques
   * comme internet
@@ -200,7 +179,7 @@ Dans le cadre du TP :
   * il a une autre interface host-only, qui possède une IP dans un LAN
     * le LAN `net12`
     * le LAN `net1`
-  * **`router1` va faire du NAT pour permettre à toutes les autres machines d'accéder à internet
+  * **`router1`** va faire du NAT pour permettre à toutes les autres machines d'accéder à internet
 * afin de renforcer un peu la sécurité de notre mini-infra :
   * `net1` (clients) pourra joindre internet
   * `net2` (serveurs) **ne pourra pas** joindre internet
@@ -233,8 +212,15 @@ router1.net12.tp2|     |10.2.12.2/29     10.2.12.3/29|     |
 ### Mise en place
 
 S'assurer que la VM `router1` peut joindre internet :
-* faire un `ping` vers une IP connue sur internet
-* ou un [`curl`](../../cours/lexique.md#curl-et-wget) si vous êtes à YNOV
+```
+[it4@router1 ~]$ curl google.com
+<HTML><HEAD><meta http-equiv="content-type" content="text/html;charset=utf-8">
+<TITLE>301 Moved</TITLE></HEAD><BODY>
+<H1>301 Moved</H1>
+The document has moved
+<A HREF="http://www.google.com/">here</A>.
+</BODY></HTML>
+```
 
 Pour ce faire, on va utiliser les *zones* du Firewall CentOS. 
 * mettre l'interface NAT dans la zone `public`
@@ -247,29 +233,48 @@ Pour ce faire, on va utiliser les *zones* du Firewall CentOS.
 
 Activer le NAT (ou *masquerading*) dans la zone `public`
 * `sudo firewall-cmd --add-masquerade --zone=public --permanent`
-* reload le firewall (vous connaissez la commande !)
+* reload le firewall
 
 Ajouter une route aux autres machines pour qu'elles récup un accès Internet
-* d'abord sur `router2` pour tester
+* d'abord sur **router2** pour tester
   * ajouter une route par défaut
   * `sudo ip route add default via <IP_GATEWAY> dev <INTERFACE_NAME>`
-  * `ping` ou [`curl`](../../cours/lexique.md#curl-et-wget) pour tester l'accès internet
+  * `sudo ip route add default via 10.2.12.2 dev enp0s9`
 * ensuite idem sur `client1`
+  * on rajoute un petit DNS pour curl google
+  ```
+  [it4@client1 ~]$ cat /etc/resolv.conf 
+  # Generated by NetworkManager
+  nameserver 8.8.8.8
+  ```
+  ```
+  [it4@router1 ~]$ curl google.com
+  <HTML><HEAD><meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <TITLE>301 Moved</TITLE></HEAD><BODY>
+  <H1>301 Moved</H1>
+  The document has moved
+  <A HREF="http://www.google.com/">here</A>.
+  </BODY></HTML>
+  ```
 * vérifier que `server1` n'a pas accès à internet
+    ```
+    [it4@server1 ~]$ curl google.com
+    curl: (6) Could not resolve host: google.com; Unknown error
+    ```
 
 ---
 
 ## 2. DHCP server
 
-Un serveur DHCP, ça permet de :
-* donner une IP à des clients qui le demandent
-* donner d'autres infos
-  * comme l'adresse de la passerelle par défaut
-
 On va s'en servir pour que de nouveaux clients puissent récupérer une IP et l'adresse de la passerelle directement dans `net1` (réseau clients).  
 
 Pour faire ça, on va recycler `client1` :
 * renommer `client1.net1.tp2` en `dhcp-server.net1.tp2`
+
+
+J'Y SUIS LA
+
+
 * puis : `sudo yum install -y dhcp`
 * récupérer [le fichier d'exemple de configuration dhcpd](./dhcp/dhcpd.conf)
   * **comprendre le fichier**
