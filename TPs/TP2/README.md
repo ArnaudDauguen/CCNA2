@@ -414,7 +414,7 @@ On va utiliser le serveur web [NGINX](https://www.nginx.com/) pour faire ça sim
   * `sudo systemctl start nginx`
 * pour vérifier qu'il est lancé
   * `sudo systemctl status nginx`
-  * [`sudo ss -altnp4`](../../cours/lexique.md#netstat-ou-ss)
+  * `sudo ss -altnp4`
     ```
     [it4@server1 ~]$ sudo ss -altnp4
     State       Recv-Q Send-Q Local Address:Port               Peer Address:Port              
