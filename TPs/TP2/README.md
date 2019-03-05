@@ -284,7 +284,7 @@ Pour faire ça, on va recycler `client1` :
 
 Pour tester : 
 * on craft `client2.tp2.b1`
-  * on viens conf son interface **enp0s8**, celle dans net1
+  * on viens conf son interface **enp0s8**, celle dans **net1**
     ```
     TYPE=Ethernet
     BOOTPROTO=dhcp
@@ -292,7 +292,7 @@ Pour tester :
     DEVICE=enp0s8
     ONBOOT=yes
     ```
-  * `ifdown`, `ifup` et on check qu'on a bien une nouvelle ip
+  * `ifdown`, `ifup` et on check qu'on a bien une nouvelle ip et une route par defaut
     ```
     [it4@client2 ~]$ ip a | grep "inet 10.2.1"
     inet 10.2.1.50/24 brd 10.2.1.255 scope global dynamic enp0s8
@@ -307,71 +307,163 @@ Pour tester :
 
 ## 3. NTP server
 
-### Présentation
-
-NTP (pour *Network Time Protocol*) est le protocole (= la langue) que l'on utilise pour permettr eà plusieurs serveurs d'être synchronisés au niveau de la date et de l'heure. Le problème est loin d'être trivial lorsque l'on s'y intéresse de près.  
-
-Il existe des [serveurs NTP publics](https://www.pool.ntp.org), sur lesquels n'importe qui peut se synchroniser. Ils servent souvent de référence.  
-
-Dans notre cas :
-* on va demander à `router1` de se synchroniser sur un serveur externe
-* et on va demander à toutes les autres machines de se synchroniser sur `router1`
-
-Dernier détail : sur CentOS, le service qui gère NTP s'appelle `chrony` :
-* le démon systemd s'appelle `chronyd`
-  * donc `sudo systemctl restart chronyd` par exemple
-* la commande pour avoir des infos est `chronyc`
-  * `chronyc sources` pour voir les serveurs pris en compte par `cronyd`
-  * `chronyc tracking` pour voir l'état de la synchronisation
-* la configuration se trouve dans `/etc/chrony.conf`
-* présent par défaut sur CentOS
-
 ### Mise en place
+On va ouvrir internet à **router2** et aux *servers*
+* **router1**
 
-Sur `router1` : 
-* éditer le fichier `/etc/chrony.conf`
-  * [un contenu modèle se trouve ici](./chrony/serveur/chrony.conf)
-  * choisissez le pool de serveurs français sur [le site des serveurs externes de référence](https://www.pool.ntp.org) et ajoutez le à la configuration
-* [ouvrir le port utilisé par NTP](../../cours/procedures.md#interagir-avec-le-firewall)
-  * c'est le port 123/UDP
-* démarrer le service `chronyd`
-  * `sudo systemctl start chronyd`
-* vérifier l'état de la synchronisation NTP
-  * `chronyc sources`
-  * `chronyc tracking`
 
-Sur toutes les autres machines : 
-* éditer le fichier `/etc/chrony.conf`
-  * [un contenu modèle se trouve ici](./chrony/client/chrony.conf)
-* [ouvrir le port utilisé par NTP](../../cours/procedures.md#interagir-avec-le-firewall)
-  * c'est le port 123/UDP
-* démarrer le service `chronyd`
-  * `sudo systemctl start chronyd`
+Conf, sur **router1**, **router2** et **server1** : 
+* install
+  * `sudo yum install -y chrony`
+* éditer le fichier `/etc/chrony.conf`, on lui donne les servers français.
+  ```
+  server 0.europe.pool.ntp.org
+  server 1.europe.pool.ntp.org
+  server 2.europe.pool.ntp.org
+  server 3.europe.pool.ntp.org
+  ```
+  
+* on ouvre son port dans le firewall puis on le lance
+  ```
+  sudo firewall-cmd --add-port=123/udp --permanent
+  sudo firewall-cmd --reload
+  ```
+  ```
+  sudo systemctl start chronyd
+  ```
 * vérifier l'état de la synchronisation NTP
+  * **router1**
+    * *chronyc sources*
+      ```
+      [it4@router1 ~]$ chronyc sources
+      210 Number of sources = 4
+      MS Name/IP address         Stratum Poll Reach LastRx Last sample
+      ===============================================================================
+      ^? server.spnr.de                2   6     1    15  +3122us[+3122us] +/-   34ms
+      ^? ns2.admincmd.com              2   6     1    16  +1261us[+1261us] +/-   35ms
+      ^? server.samoylyk.net           2   6     1    16  +5831us[+5831us] +/-   56ms
+      ^? meg.magnet.ie                 2   6     1    17  -2184us[-2184us] +/-   72ms
+      ```
+    * *chronyc tracking*
+      ```
+      [it4@router1 ~]$ chronyc tracking
+      Reference ID    : 2EE8FABC (server.spnr.de)
+      Stratum         : 3
+      Ref time (UTC)  : Tue Mar 05 16:23:38 2019
+      System time     : 0.000466082 seconds fast of NTP time
+      Last offset     : +0.000668030 seconds
+      RMS offset      : 0.000668030 seconds
+      Frequency       : 0.629 ppm fast
+      Residual freq   : +0.789 ppm
+      Skew            : 140.169 ppm
+      Root delay      : 0.045167409 seconds
+      Root dispersion : 0.009137428 seconds
+      Update interval : 64.3 seconds
+      Leap status     : Normal
+      ```
+  * exemple de **router2**
+    * *chronyc sources*
+      ```
+      [it4@router2 ~]$ chronyc sources
+      210 Number of sources = 1
+      MS Name/IP address         Stratum Poll Reach LastRx Last sample               
+      ===============================================================================
+      ^? router1                       2   6     1     2    +87us[  +87us] +/-   21ms
+      ```
+      On voit qu'il passe par **routeur1**, c'est good
+    * *chronyc tracking*
+      ```
+      [it4@routeur2 ~]$ chronyc tracking
+      Reference ID    : 2EE8FABC ()
+      Stratum         : 10
+      Ref time (UTC)  : Mon Mar 04 10:41:18 2019
+      System time     : 0.000000000 seconds slow of NTP time
+      Last offset     : +0.000000000 seconds
+      RMS offset      : 0.000000000 seconds
+      Frequency       : 0.000 ppm slow
+      Residual freq   : +0.000 ppm
+      Skew            : 0.000 ppm
+      Root delay      : 0.000000000 seconds
+      Root dispersion : 0.000000000 seconds
+      Update interval : 0.0 seconds
+      Leap status     : Normal
+      ```
+      Tout est à 0, on va dire que c'est normal, il sont censé être synchro mais je ne m'attendais pas à une telle précision.
 
 ---
 
 ## 4. Web server
 
-Le serveur web tournera sur la machine `server1.net2.tp2`. **Ce sera notre "service d'infra".** Dans une vraie infra, on peut trouver tout un tas de services utiles à l'infra en interne :
+Le serveur web tournera sur la machine `server1.net2.b2`. **Ce sera notre "service d'infra".** Dans une vraie infra, on peut trouver tout un tas de services utiles à l'infra en interne :
 * dépôts git pour les dévs
 * partage de fichiers
 * serveur mail
 * etc.  
 
 On va utiliser le serveur web [NGINX](https://www.nginx.com/) pour faire ça simplement :
-* activation des dépôts EPEL (plus d'infos sur le net, ou posez moi la question)
+* activation des dépôts EPEL
   * `sudo yum install -y epel-release`
 * installation du serveur web NGINX
   * `sudo yum install -y nginx`
 * ouverture du port firewall pour l'HTTP
-  * [ouvrez le port 80 en TCP](../../cours/procedures.md#interagir-avec-le-firewall)
+  ```
+  sudo firewall-cmd --add-port=80/tcp --permanent
+  sudo firewall-cmd --reload
+  ```
 * lancer le serveur web
   * `sudo systemctl start nginx`
 * pour vérifier qu'il est lancé
   * `sudo systemctl status nginx`
   * [`sudo ss -altnp4`](../../cours/lexique.md#netstat-ou-ss)
+    ```
+    [it4@server1 ~]$ sudo ss -altnp4
+    State       Recv-Q Send-Q Local Address:Port               Peer Address:Port              
+    LISTEN      0      128      *:80                   *:*                   users:(("nginx",pid=2423,fd=6),("nginx",pid=2422,fd=6))
+    LISTEN      0      128      *:22                   *:*                   users:(("sshd",pid=940,fd=3))
+    LISTEN      0      100    127.0.0.1:25                   *:*                   users:(("master",pid=1040,fd=13))
+    ```
+    Nginx est là et il ecoute sur le port 80, c'est parfait.
 * (optionnel) personnaliser la page d'accueil par défaut
   * c'est le fichier `/usr/share/nginx/html/index.html`
+    * Afin d'éviter tout risque de propagande (Soviétique ou autre) nous n'irons pas voir ce fichier :)
 
-Vous devriez pouvoir accéder au serveur web depuis vos clients avec un [`curl`](../../cours/lexique.md#curl-et-wget). 
+On curl pour tester :
+  ```
+  [it4@client2 ~]$ curl 10.2.2.10
+  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+  <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+      <head>
+          <title>Test Page for the Nginx HTTP Server on Fedora</title>
+          <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+      </head>
+
+      <body>
+          <h1>What's wrong, Comrade? You look unwell. I'll get you some Russian tea. Wait a moment.</h1>
+
+      </body>
+  </html>
+  ```
+
+  J'ai pas pus résister :D
+
+# Bilan
+* on a des **clients** 
+  * dans un réseau dédié
+  * qui récupèrent tout leur réseau automatiquement
+    * une IP
+    * une passerelle par défaut
+    * un serveur DNS
+  * qui peuvent aller sur internet normalement (avec firefox ou quoi) directement
+* on a des **serveurs**
+  * dans un réseau dédié
+  * qui ont une IP fixe
+  * qui hébergent des services d'infra (un simple `nginx` chez nous)
+* on a des **routeurs** 
+  * qui peuvent faire passer le trafic d'un réseau à l'autre
+  * qui possèdent un lien dédié (le `/30`)
+  * l'un d'eux fait du **NAT** pour permettre à tout le monde d'accéder à Internet
+
+:o ! Et nos machines sont synchro pour ce qui est de l'heure. 
+
+:fire:
