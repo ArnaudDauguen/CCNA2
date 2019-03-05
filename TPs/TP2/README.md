@@ -271,25 +271,37 @@ On va s'en servir pour que de nouveaux clients puissent récupérer une IP et l'
 Pour faire ça, on va recycler `client1` :
 * renommer `client1.net1.tp2` en `dhcp-server.net1.tp2`
 
-
-J'Y SUIS LA
-
-
-* puis : `sudo yum install -y dhcp`
-* récupérer [le fichier d'exemple de configuration dhcpd](./dhcp/dhcpd.conf)
+* récupérer le fichier d'exemple de configuration dhcpd
   * **comprendre le fichier**
+    * Bon... Ca marche comme une location d'appart
+    * On signe un contrat d'un certaine durée (ici, 10min au moins et 2h max)
+    * Ensuite on choisi la plage des ips à louer dans un sous réseau de celui actuel (appart 1, 2, 3, 4)
+    * puis on baptise le batiment (domain name), on donne la boite aux lettres publique (broadcast) et la porte de sortie (router)
   * il est très minimaliste, c'est à la portée de tous
+    * Yep, j'ai compris
   * le mettre dans `/etc/dhcp/dhcpd.conf`
-* démarrer le serveur DHCP 
-  * `sudo systemctl start dhcpd`
-  * appelez-moi en cas de pb
+  * puis on démarre `sudo systemctl start dhcpd`
 
 Pour tester : 
-* clonez une nouvelle fois votre VM patron, ce sera notre `client2.tp2.b1`
-  * [configurer l'interface en DHCP, en dynamique (pas en statique)](../../cours/procedures.md#définir-une-ip-dynamique-dhcp)
-  * utiliser [`dhclient`](../../cours/lexique.md#dhclient-linux-only)
-* dans un cas comme dans l'autre, vous devriez récupérer une IP dans la plage d'IP définie dans `dhcpd.conf`
-  * et une route par défaut  
+* on craft `client2.tp2.b1`
+  * on viens conf son interface **enp0s8**, celle dans net1
+    ```
+    TYPE=Ethernet
+    BOOTPROTO=dhcp
+    NAME=enp0s8
+    DEVICE=enp0s8
+    ONBOOT=yes
+    ```
+  * `ifdown`, `ifup` et on check qu'on a bien une nouvelle ip
+    ```
+    [it4@client2 ~]$ ip a | grep "inet 10.2.1"
+    inet 10.2.1.50/24 brd 10.2.1.255 scope global dynamic enp0s8
+    ```
+    ```
+    [it4@client2 ~]$ ip r s
+    default via 10.2.1.254 dev enp0s8 proto static metric 100 
+    10.2.1.0/24 dev enp0s8 proto kernel scope link src 10.2.1.50 metric 100
+    ```
 
 ---
 
