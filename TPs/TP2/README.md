@@ -445,7 +445,7 @@ On curl pour tester :
   </html>
   ```
 
-  J'ai pas pus résister :D
+  J'ai pas pu résister :D
 
 # Bilan
 * on a des **clients** 
