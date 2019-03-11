@@ -18,40 +18,6 @@ On va mettre en place plusieurs labs pour y aller petit à petit.
 
 Pour le dernier lab, vous devrez imaginer une topo qui remet en place tout ce qu'on a vu jusqu'à maintenant. Mais si ça va être fun.
 
-# Déroulement et rendu du TP 
-* vous aurez besoin de : 
-  * [Virtualbox](https://www.virtualbox.org/wiki/Downloads)
-  * [GNS3](https://www.gns3.com/)
-
-* les machines virtuelles Linux : 
-  * l'OS **devra être** [CentOS 7 (en version minimale)](http://isoredirect.centos.org/centos/7/isos/x86_64/CentOS-7-x86_64-Minimal-1810.iso)
-  * pas d'interface graphique (que de la ligne de commande)
-  
-* les routeurs Cisco :
-  * l'iOS devra être celui d'un [Cisco 3640](https://drive.google.com/drive/folders/1DFe2u5tZldL_y_UYm32ZbmT0cIfgQM2p)
-
-* les switches :
-  * afin d'utiliser GNS3 comme plateforme pour tous les labs, on utilisera les [iOU dispos sur le même drive]()
-  * on va faire l'install ensemble
-
-* les machines virtuelles : 
-  * l'OS **devra être** [CentOS 7 (en version minimale)](http://isoredirect.centos.org/centos/7/isos/x86_64/CentOS-7-x86_64-Minimal-1810.iso)
-  * pas d'interface graphique (que de la ligne de commande)
-  
-* il y a beaucoup de ligne de commande dans ce TP, préférez les copier/coller aux screens
-
-* [la forme pour le rendu est décrite sur le README du dossier TP](../README.md)
-
-# Hints généraux
-
-* dans le TP, **lisez en entier une partie avant de commencer à la réaliser.** Ca donne du sens et aide à la compréhension
-* **allez à votre rythme.** Le but n'est pas de finir le TP, mais plutôt de bien saisir et correctement appréhender les différentes notions
-* **n'hésitez pas à me demander de l'aide régulièrement** mais essayez toujours de chercher un peu par vous-mêmes avant :)
-* **utilisez SSH dès que possible**
-* **utilisez Wireshark** pour comprendre ce qu'il se passe vraiment sur le réseau, n'attendez plus que je vous dise de le lancer
-
----
-
 # Sommaire
 
 * [I. Manipulation de switches et de VLAN](#i-manipulation-de-switches-et-de-vlan)
