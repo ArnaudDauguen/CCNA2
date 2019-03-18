@@ -35,11 +35,6 @@ Pour le dernier lab, vous devrez imaginer une topo qui remet en place tout ce qu
 ---
 
 # I. Manipulation de switches et de VLAN
-
-Dans cette partie on va mettre en place de simples Switches Cisco afin de permettre la connectivité entre plusieurs clients.  
-
-On va aussi mettre en place des VLANs afin d'isoler certaines parties du trafic.  
-
 # 1. Mise en place du lab
 
 #### > Topologie
@@ -66,13 +61,32 @@ Hosts | `10.1.1.0/24`
 `client2.lab1.tp3` | `10.1.1.2/24`
 `client3.lab1.tp3` | `10.1.1.3/24`
 
+
+C'est GNS 3 qui gère l'interface réseau donc on rajoute juste ce dont on a besoin dans `/etc/sysconfig/network-scripts/ifcfg-enps03` :
+```
+BOOTPROTO=static
+IPADDR=10.1.1.1
+NETMASK=255.255.255.0
+```
+
 #### > Vérification
-* [ ] [Nom de domaines](../../cours/procedures.md#changer-son-nom-de-domaine) sur toutes les machines
-* [ ] Toutes les machines doivent pouvoir se `ping`
+* [X] Nom de domaines sur toutes les machines
+  ```
+  sudo hostname <hostname>
+  echo '<hostname>' | sudo tee /etc/hostname
+  ```
+  ici, pour **client1** on a :
+  ```
+  [arnaud@localhost ~]$ hostname --fqdn
+  client1.lab1
+  ```
+* [X] Toutes les machines doivent pouvoir se `ping`
+  * Après 3h de bataille avec GNS 3, il s'est avéré que les Switch avaient juste magiquement disparrus de notre espace-temps. Mais au final ça marche
+  * Tout le monde se ping yey...
 
 # 2. Configuration des VLANs
 
-Pour la mise en place des VLANs, [référez-vous à la page de procédures Cisco](../../cours/procedures-cisco.md#vlan). Mettez en place les VLANs comme suit : 
+Mettez en place les VLANs comme suit : 
 * les ports avec un VLAN clairement assigné sont les ports destinés aux clients
   * ce sont les ports **en mode access**
 * les ports entre deux switches sont les ports en **mode trunk**
@@ -91,11 +105,45 @@ client1           SW1                  SW 2
                client2               client3
 
 ```
+Exmple pour **Switch1**
+
+```
+IOU1#conf t
+IOU1(config)#vlan 10
+IOU1(config-vlan)#name VLAN10
+IOU1(config-vlan)#exit
+
+IOU1(config)#vlan 20
+IOU1(config-vlan)#name VLAN20
+IOU1(config-vlan)#exit
+
+IOU1(config)#interface Ethernet 0/1
+IOU1(config-if)#switchport mode access
+IOU1(config-if)#switchport access vlan 10
+IOU1(config-if)#exit
+
+IOU1(config)#interface Ethernet 0/2
+IOU1(config-if)#switchport access vlan 20
+IOU1(config-if)#exit
+
+IOU1(config)#interface Ethernet 0/0
+IOU1(config-if)#switchport trunk encapsulation dot1q
+IOU1(config-if)#switchport mode trunk
+```
+On crée les VLANs, on les attribue aux interfaces du switch puis un prépare le trunk pour la communication inter-switch
 
 #### > Vérification
-* [ ] `client1.lab1.tp3` peut joindre `client3.lab1.tp3`
-  * `ping` et/ou [`traceroute`](../../cours/lexique.md#traceroute)
-* [ ] `client2.lab1.tp3` n'est joignable par personne
+* [X] `client1.lab1.tp3` peut joindre `client3.lab1.tp3`
+  * `ping` et/ou `traceroute`
+   ```
+   [arnaud@client1 ~]$ sudo traceroute -I 10.1.1.3
+    1   10.1.1.3 (10.1.1.3)  69.331 ms  69.425 ms  69.314 ms
+   ```
+* [X] `client2.lab1.tp3` n'est joignable par personne
+   ```
+   [arnaud@client1 ~]$ sudo traceroute -I 10.1.1.3
+    1   client1.lab1 (10.1.1.1)  3007.178 ms !H  3006.512 ms !H  3006.506 ms !H
+   ```
 
 ---
 
