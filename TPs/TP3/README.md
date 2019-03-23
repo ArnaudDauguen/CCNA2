@@ -105,32 +105,51 @@ client1           SW1                  SW 2
                client2               client3
 
 ```
-Exmple pour **Switch1**
+#### Configuration pour **Switch1**
+  * Création des VLANs
+    ```
+    IOU1#conf t
+    IOU1(config)#vlan 10
+    IOU1(config-vlan)#name VLAN10
 
-```
-IOU1#conf t
-IOU1(config)#vlan 10
-IOU1(config-vlan)#name VLAN10
-IOU1(config-vlan)#exit
+    IOU1(config)#vlan 20
+    IOU1(config-vlan)#name VLAN20
+    ```
+  * Affectation des VLANs aux bonnes interfaces
+    ```
+    IOU1(config)#interface Ethernet 0/1
+    IOU1(config-if)#switchport mode access
+    IOU1(config-if)#switchport access vlan 10
 
-IOU1(config)#vlan 20
-IOU1(config-vlan)#name VLAN20
-IOU1(config-vlan)#exit
-
-IOU1(config)#interface Ethernet 0/1
-IOU1(config-if)#switchport mode access
-IOU1(config-if)#switchport access vlan 10
-IOU1(config-if)#exit
-
-IOU1(config)#interface Ethernet 0/2
-IOU1(config-if)#switchport access vlan 20
-IOU1(config-if)#exit
-
-IOU1(config)#interface Ethernet 0/0
-IOU1(config-if)#switchport trunk encapsulation dot1q
-IOU1(config-if)#switchport mode trunk
-```
-On crée les VLANs, on les attribue aux interfaces du switch puis un prépare le trunk pour la communication inter-switch
+    IOU1(config)#interface Ethernet 0/2
+    IOU1(config-if)#switchport mode access
+    IOU1(config-if)#switchport access vlan 20
+    ```
+  * Mise en place du Trunk entre les deux switchs
+    ```
+    IOU1(config)#interface Ethernet 0/0
+    IOU1(config-if)#switchport trunk encapsulation dot1q
+    IOU1(config-if)#switchport mode trunk
+    ```
+#### Configuration pour **Switch2**
+  * Création du VLAN
+    ```
+    IOU1#conf t
+    IOU1(config)#vlan 10
+    IOU1(config-vlan)#name VLAN10
+    ```
+  * Affectation du VLAN
+    ```
+    IOU1(config)#interface Ethernet 0/1
+    IOU1(config-if)#switchport mode access
+    IOU1(config-if)#switchport access vlan 10
+    ```
+  * Mise en place du Trunk entre les deux switchs
+    ```
+    IOU1(config)#interface Ethernet 0/0
+    IOU1(config-if)#switchport trunk encapsulation dot1q
+    IOU1(config-if)#switchport mode trunk
+    ```
 
 #### > Vérification
 * [X] `client1.lab1.tp3` peut joindre `client3.lab1.tp3`
@@ -193,25 +212,112 @@ Hosts | `lab2-net1` |  `lab2-net2` |  `lab2-net12`
 `router1.lab2.tp3` | `10.2.1.254/24` | x | `10.2.12.1/30`
 `router2.lab2.tp3` | x | `10.2.2.254/24` | `10.2.12.2/30`
 
-* pour les IPs des machines Cisco, [référez-vous à la section dédiée dans les procédures Cisco](../../cours/procedures-cisco.md#définir-une-ip-statique)
+* Configuration des Routeurs, exemple pour **Routeur1**
+  ```
+  //Mise en place de l'interface pour le réseau /30 des routeurs
+
+  R1#conf t
+  Enter configuration commands, one per line.  End with CNTL/Z.
+  R1(config)#interface f0/0
+  R1(config-if)#ip address 10.2.12.1 255.255.255.252
+  R1(config-if)#no shut
+  R1(config-if)#exit
+  R1(config)#
+  *Mar  1 00:14:35.671: %LINK-3-UPDOWN: Interface FastEthernet0/0, changed state to up
+  *Mar  1 00:14:36.671: %LINEPROTO-5-UPDOWN: Line protocol on Interface FastEthernet0/0, changed state to up
+
+
+  //Mise en place de l'interface dans le réseau /24 des clients
+
+  R1(config)#interface f2/0
+  R1(config-if)#ip address 10.2.1.254 255.255.255.0
+  R1(config-if)#no shut
+  R1(config-if)#exit
+  R1(config)#
+  *Mar  1 00:15:59.783: %LINK-3-UPDOWN: Interface FastEthernet2/0, changed state to up
+  *Mar  1 00:16:00.783: %LINEPROTO-5-UPDOWN: Line protocol on Interface FastEthernet2/0, changed state to up
+  ```
+* Configuration des Clients, exemple pour **Client1**
+  ```
+  [arnaud@localhost ~]$ echo 'client1' | sudo tee /etc/hostname
+
+  [arnaud@localhost ~]$ cat /etc/sysconfig/network-scripts/ifcfg-enp0s3
+  ...
+  BOOTPROTO=static
+  IPADDR=10.2.2.10
+  NETMASK=255.255.255.0
+  ```
+* Configuration du Server, **Server1**
+  ```
+  [arnaud@localhost ~]$ echo 'serveur1' | sudo tee /etc/hostname
+
+  [arnaud@localhost ~]$ cat /etc/sysconfig/network-scripts/ifcfg-enp0s3
+  ...
+  BOOTPROTO=static
+  IPADDR=10.2.2.10
+  NETMASK=255.255.255.0
+  ```
 
 #### > Vérification
-* [ ] les clients et serveurs peuvent joindre leurs gateways respectives
-* [ ] les routeurs peuvent discuter entre eux
+* Suite à de mystiques problèmes de connexio n SSH je ne puis insérer de copié-collé des pings donc je vais mettre des screens...
+* [X] les clients et serveurs peuvent joindre leurs gateways respectives
+  ![ping client2 vers routeur1](./relatives/pingC2R1.PNG 'ping client2 vers routeur1')
+  * C'est **Client1** qui ne peut pas joindre **Routeur1**
+* [X] les routeurs peuvent discuter entre eux
+  ![ping routeur 2 vers routeur 1](./relatives/pingR2R1.PNG 'ping routeur2 vers routeur1')
 
 ## 2. Configuration du routage statique
 
 Sur toutes les machines :
 * ajouter une route vers `lab2-net1` et `lab2-net2` à toutes les machines qui ne les ont pas déjà
-  * [sur une machine CentOS](../../cours/procedures.md#ajouter-une-route-statique)
-  * [sur un routeur Cisco](../../cours/procedures-cisco.md#ajouter-une-route-statique)
+  * **Client2** `lab2-net2` :
+    ```
+    sudo ip route add 10.2.2.0/24 via 10.2.1.254 dev enp0s3
+    ```
+  * **Serveur1** `lab2-net1` :
+    ```
+    sudo ip route add 10.2.1.0/24 via 10.2.2.254 dev enp0s3
+    ```
+  * **Routeur1** `lab2-net2` :
+    ```
+    router1(config)#ip route 10.2.2.0 255.255.255.0 10.2.12.2
+    ```
+  * **Routeur2** `lab2-net1` :
+    ```
+    router2(config)#ip route 10.2.1.0 255.255.255.0 10.2.12.1
+    ```
 * **PAS DE ROUTES A AJOUTER VERS `lab2-net12`**
   * vos routeurs connaissent déjà la route, puisqu'ils y sont directement connectés
   * et personne d'autre n'a besoin de la connaître
 
 #### > Vérification
-* [ ] tous les clients et serveurs peuvent se joindre
+* [X] tous les clients et serveurs peuvent se joindre
+  * sauf le client qui n'a pas de passerelle
+    ![ping serveur 1 vers client 2](./relatives/pingS1C2.PNG 'ping serveur1 vers client2')
+  * proposez une topologie où tous les clients auraient la même passerelle (vous avez le droit d'ajouter des équipements)
+    * Je crois que j'ai pas compris pourquoi mais **Routeur1** ne veux parler qu'à une personne donc on va mettre un multi-prise au milieu qui fera messager. Donc on a besoin d'invoquer un switch.
 
+#### > Nouvelle Topologie
+```
+                           10.2.12.0/30
+
+                  router1                router2
+10.2.1.0/24      +------+               +------+
+            .254 |      |.1           .2|      |.254     .10+----+
+          -------+      +---------------+      +------------+    |
+          |      +------+               +------+            +----+
+          |                                                  server1
+        +-+---------------+
+        |                 | switch1
+        +----+-------+----+
+             |       |                         10.2.2.0/24
+             |.10    |.11
+          +----+  +----+
+          |    |  |    |
+          +----+  +----+
+        client1   client2
+
+```
 ---
 
 # III. Mise en place d'OSPF
