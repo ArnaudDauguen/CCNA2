@@ -293,7 +293,7 @@ Sur toutes les machines :
 #### > Vérification
 * [X] tous les clients et serveurs peuvent se joindre
   * sauf le client qui n'a pas de passerelle
-    ![ping serveur 1 vers client 2](./relatives/pingS1C2.PNG 'ping serveur1 vers client2')
+  ![ping serveur 1 vers client 2](./relatives/pingS1C2.PNG 'ping serveur1 vers client2')
   * proposez une topologie où tous les clients auraient la même passerelle (vous avez le droit d'ajouter des équipements)
     * Je crois que j'ai pas compris pourquoi mais **Routeur1** ne veux parler qu'à une personne donc on va mettre un multi-prise au milieu qui fera messager. Donc on a besoin d'invoquer un switch.
 
@@ -331,7 +331,7 @@ Les protocoles de routage dynamique permettent entre autres de résoudre ces pro
 #### > Topologie
 
 <br><p align="center">
-  <img src="./pic/lab3-ospf.png" title="Lab 3 : OSPF">
+  <img src="./relatives/lab3-ospf.png" title="Lab 3 : OSPF">
 </p>
 
 #### > Tableau d'adressage
@@ -347,32 +347,98 @@ Hosts | `10.3.100.0/30` | `10.3.100.4/30` | `10.3.100.8/30` | `10.3.100.12/30` |
 `router5.lab3.tp3` | x | x | x | `10.3.100.14/30` | `10.3.100.17/30` | x | x | x 
 `router6.lab3.tp3` | x | x | x | x | `10.3.100.18/30` | `10.3.100.21/30` | x | x 
 
-* pour les IPs des machines Cisco, [référez-vous à la section dédie dans les procédures Cisco](../../cours/procedures-cisco.md#définir-une-ip-statique)
+* On a deja fait de la conf de routeurs et de VMs 15 fois, je n'en remet pas
 
 #### > Vérification
-* [ ] les clients et serveurs peuvent joindre leurs [gateways](../../lexique.md#passerelle-ou-gateway) respectives
-* [ ] les routeurs peuvent discuter entre eux (de point à point)
+* [X] les clients et serveurs peuvent joindre leurs gateways respectives
+  * **client1**
+  ```
+  [arnaud@client1 ~]$ ping 10.3.101.254
+  PING 10.3.101.254 (10.3.101.254) 56(84) bytes of data.
+  64 bytes from 10.3.101.254: icmp_seq=1 ttl=255 time=96.3 ms
+  64 bytes from 10.3.101.254: icmp_seq=2 ttl=255 time=25.9 ms
+  ^C
+  --- 10.3.101.254 ping statistics ---
+  3 packets transmitted, 2 received, 33% packet loss, time 2003ms
+  rtt min/avg/max/mdev = 25.951/61.168/96.386/35.218 ms
+  ```
+  * **serveur1**
+  ```
+  [arnaud@serveur1 ~]$ ping 10.3.102.254
+  PING 10.3.102.254 (10.3.102.254) 56(84) bytes of data.
+  64 bytes from 10.3.102.254: icmp_seq=1 ttl=255 time=26.9 ms
+  64 bytes from 10.3.102.254: icmp_seq=2 ttl=255 time=21.0 ms
+  ^C
+  --- 10.3.102.254 ping statistics ---
+  3 packets transmitted, 2 received, 33% packet loss, time 2003ms
+  rtt min/avg/max/mdev = 21.090/24.020/26.950/2.930 ms
+  ```
+* [X] les routeurs peuvent discuter entre eux (de point à point)
+  * je vais montrer que le ping de **routeur1** vers **routeur2**, c'est la même chose à chaque fois
+  ```
+  R1#ping 10.3.100.2
 
-## 2. Configuration de OSPF
+  Type escape sequence to abort.
+  Sending 5, 100-byte ICMP Echos to 10.3.100.2, timeout is 2 seconds:
+  .!!!!
+  Success rate is 80 percent (4/5), round-trip min/avg/max = 8/32/68 ms
+  ```
+  * Tout est OK (comme d'habitude, le premier packet perdu pour l'ARP)
+  
 
-Vous pouvez vous référer à [la section dédiée dans la page de procédure Cisco pour configurer OSPF](../../cours/procedures-cisco.md#définir-une-ip-statique#ospf).  
+## 2. Configuration de OSPF  
 
-Sur chaque routeur : 
+Sur chaque routeur (pour les exemples, on regardera **routeur1**): 
 * activer ospf
+  ```
+  R1#conf t
+  Enter configuration commands, one per line.  End with CNTL/Z.
+  R1(config)#router ospf 1
+  ```
 * définir un `router-id` qui correspond au numéro du routeur
-  * `1.1.1.1` pour `router1.lab3.tp3`
-  * `2.2.2.2` pour `router2.lab3.tp3`
-  * etc.
+  * `1.1.1.1` pour **router1**
+  * `2.2.2.2` pour **router2**
+  ```
+  R1(config-router)#router-id 1.1.1.1
+  ```
 * partager **tous** les réseaux auxquels le routeur est connecté 
   * les `/30` et les `/24`
   * avec une commande `network`
+  ```
+  R1(config-router)#network 10.3.100.0 0.0.0.3 area 0
+  R1(config-router)#network 10.3.100.20 0.0.0.3 area 0
+  R1(config-router)#network 10.3.102.0 0.0.0.255 area 2
+  ```
 
 Sur le client et le serveur :
-* ajouter une route par défaut qui pointe vers leurs [passerelles](../../lexique.md#passerelle-ou-gateway) respectives
+* ajouter une route par défaut qui pointe vers leurs passerelles respectives
+  * **client1** : `[arnaud@client1 ~]$ sudo ip route add default via 10.3.101.254`
+  * **serveur1** : `[arnaud@serveur1 ~]$ sudo ip route add default via 10.3.102.254`
 
 #### > Vérification
-* [ ] tous les routeurs peuvent se joindre
-* [ ] `client1.lab3.tp3` peut joindre `server1.lab3.tp3`
+* [X] tous les routeurs peuvent se joindre
+  * **routeur1** peut ping **routeur4** (les autres routeurs se pingent aussi mais je vais mettre tout les rapports...)
+  ```
+  R1#ping 10.3.100.10
+
+  Type escape sequence to abort.
+  Sending 5, 100-byte ICMP Echos to 10.3.100.10, timeout is 2 seconds:
+  !!!!!
+  Success rate is 100 percent (5/5), round-trip min/avg/max = 8/60/100 ms
+  ```
+* [X] **cleint1** peut joindre **server1**
+  ```
+  [arnaud@client1 ~]$ ping 10.3.102.10
+  PING 10.3.102.10 (10.3.102.10) 56(84) bytes of data.
+  64 bytes from 10.3.102.10: icmp_seq=1 ttl=60 time=100 ms
+  64 bytes from 10.3.102.10: icmp_seq=2 ttl=60 time=117 ms
+  64 bytes from 10.3.102.10: icmp_seq=3 ttl=60 time=112 ms
+  64 bytes from 10.3.102.10: icmp_seq=4 ttl=60 time=160 ms
+  ^C
+  --- 10.3.102.10 ping statistics ---
+  4 packets transmitted, 4 received, 0% packet loss, time 3003ms
+  rtt min/avg/max/mdev = 100.248/122.407/160.307/22.717 ms
+  ```
 
 ---
 
