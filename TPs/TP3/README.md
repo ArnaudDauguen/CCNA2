@@ -293,7 +293,9 @@ Sur toutes les machines :
 #### > Vérification
 * [X] tous les clients et serveurs peuvent se joindre
   * sauf le client qui n'a pas de passerelle
-  ![ping serveur 1 vers client 2](./relatives/pingS1C2.PNG 'ping serveur1 vers client2')
+    
+    ![ping serveur 1 vers client 2](./relatives/pingS1C2.PNG 'ping serveur1 vers client2')
+  
   * proposez une topologie où tous les clients auraient la même passerelle (vous avez le droit d'ajouter des équipements)
     * Je crois que j'ai pas compris pourquoi mais **Routeur1** ne veux parler qu'à une personne donc on va mettre un multi-prise au milieu qui fera messager. Donc on a besoin d'invoquer un switch.
 
