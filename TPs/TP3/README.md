@@ -482,66 +482,263 @@ Je vous conseille de vous organiser pour ne pas que ce soit l'enfer
 
 ---
 
-:fire: :fire: :fire: GG. On voit ce genre de petites infras un peu partout dans le monde réel. Il manque encore quelques éléments, mais on est très proches d'une infra réelle petite échelle. :)  :fire: :fire: :fire: 
+## Objectif
 
----
-
-# Annexe 1 : NAT dans GNS3
-
-**Il faut la GNS3 VM.**  
-
-Une fois la GNS3 VM allumée et votre lab ouvert :
-* cherchez l'appareil "NAT" dans la liste des devices de GNS3
-  * c'est un pitit nuage
-  * drag'n'drop dans la topologie
-
-Faites en sorte d'avoir ça :
-
-<p align="center">
-  <img src="./pic/NAT-in-GNS.png" title="NAT in GNS3">
+<br><p align="center">
+  <img src="./relatives/infra_v2.jpg" title="Lab 4 : Infra">
 </p>
 
-* ce routeur va donc nous servir de "machine-pivot" pour permettre à tout le monde d'accéder à internet
-  * = ce routeur va faire du NAT
-* d'abord, configuration IP : 
-```
-# show ip int br
+* Tableau d'adressage
+Hosts | `10.4.110.0/24` |  `10.4.120.0/24` |  `10.4.130.0/24` | `10.4.100.0/30` | `10.4.100.4/30` | `10.4.100.8/30` | `10.4.100.12/30`
+--- | --- | --- | --- | --- | --- | --- | ---
+`client1` | `10.4.110.10/24` | x | x | x | x | x | x
+`client2` | x | `10.4.120.10/24` | x | x | x | x | x
+`server1` | x | x | `10.4.130.10/24` | x | x | x | x
+`router1` | x | x | x | `10.4.100.1/30` | x | x | `10.4.100.14/30`
+`router2` | x | x | x | `10.4.100.2/30` | `10.4.100.5/30` | x | x
+`router3` | x | x | x | x | `10.4.100.6/30` | `10.4.100.9/30` | x
+`router4` | x | x | x | x | x | `10.4.100.10/30` | `10.4.100.13/30`
 
-# repérez l'interface qui est branchée au NAT. Dans la suite nous supposerons que c'est fastEthernet 0/0. Elle n'a pas encore d'IP.
+## Let's go !
 
-# conf t
-(config)# interface fastEthernet 0/0
-(config-if)# ip address dhcp
-(config-if)# no shut
+## 1. Conf des routeurs
+* Exemple pour **routeur1**
+  * Définition des IPs
+    ```
+    R1#conf t
+    Enter configuration commands, one per line.  End with CNTL/Z.
+    R1(config)#interface f0/0
+    R1(config-if)#ip address 10.4.100.1 255.255.255.252
+    R1(config-if)#no shut
+    R1(config-if)#exit
+    R1(config)#
+    *Mar  1 00:10:03.819: %LINK-3-UPDOWN: Interface FastEthernet0/0, changed state to up
+    *Mar  1 00:10:04.827: %LINEPROTO-5-UPDOWN: Line protocol on Interface FastEthernet0/0, changed state to up
 
-# c'est le principe du NAT dans GNS3 : vous allez récupérer une IP automatiquement, et la machine sera capable de faire du NAT. 
+    R1(config)#interface f1/0
+    R1(config-if)#ip address 10.4.100.14 255.255.255.252
+    R1(config-if)#no shut
+    R1(config-if)#exit
+    R1(config)#
+    *Mar  1 00:11:41.983: %LINK-3-UPDOWN: Interface FastEthernet1/0, changed state to up
+    *Mar  1 00:11:42.983: %LINEPROTO-5-UPDOWN: Line protocol on Interface FastEthernet1/0, changed state to up
+    ```
+  * Mise en place de l'OSPF
+    ```
+    R1#conf t
+    Enter configuration commands, one per line.  End with CNTL/Z.
+    R1(config)#router ospf 1
+    R1(config-router)#router-id 1.1.1.1
+    R1(config-router)#network 10.4.100.0 0.0.0.3 area 0
+    R1(config-router)#network 10.4.100.12 0.0.0.3 area 0
+    ```
+  * Mise en place et teste de la connexion internet (uniquement sur **routeur1** cette fois)
+    ```
+    R1#conf t
+    Enter configuration commands, one per line.  End with CNTL/Z.
+    R1(config)#interface f2/0
+    R1(config-if)#ip address dhcp
+    R1(config-if)#no shut
+    R1(config-if)#
+    *Mar  1 01:28:37.479: %LINK-3-UPDOWN: Interface FastEthernet2/0, changed state to up
+    *Mar  1 01:28:38.479: %LINEPROTO-5-UPDOWN: Line protocol on Interface FastEthernet2/0, changed state to up
+    R1(config-if)#
+    *Mar  1 01:28:48.215: %DHCP-6-ADDRESS_ASSIGN: Interface FastEthernet2/0 assigned DHCP address 192.168.122.54, mask 255.255.255.0, hostname R1
+    R1(config)#exit
 
-# attendez un peu (ou spammez la commande) puis :
-# show ip int br
 
-# vous devriez avoir récup une IP, et vous devriez ping google, grâce à votre nouvelle passerelle par défaut
+    //check qu'on a bien recup une ip en dhcp
 
-# pour voir la passerelle
-# show ip route
+    R1#show ip int br
+    ...
+    FastEthernet2/0            192.168.122.54  YES DHCP   up                    up
+    ...
 
-# ping google
-# ping 8.8.8.8
 
-# à YNOV, on peut pas ping vers l'extérieur (ou maintenant si ?)
-# donc on va faire un curl ?
-# sauf qu'il n'y a pas de curl ou ce genre d'outils sur un routeur Cisco donc on va faire une requête HTTP à la main
-# conf t
+    //on regarde si on a bien une passerelle
 
-# Activation du lookup DNS
-(config)# ip domain-lookup
+    R1#show ip route
+    ...
+    Gateway of last resort is 192.168.122.1 to network 0.0.0.0
+    ...
 
-# Configuration du serveur DNS (celui de google)
-(config)# ip name-server 8.8.8.8
+    
+    //ping google pour voir si ça marche bien
 
-# Requête web vers un site full HTTP, avec résolution de nom
-(config)# exit
-# telnet trip-hop.net 80
-GET /
+    R1#ping 8.8.8.8
+    Type escape sequence to abort.
+    Sending 5, 100-byte ICMP Echos to 8.8.8.8, timeout is 2 seconds:
+    !!!!!
+    Success rate is 100 percent (5/5), round-trip min/avg/max = 24/75/168 ms
+    ```
 
-# Vous devriez récup de l'HTML en masse ou une erreur HTTP
-```
+  * Mise en place du NAT
+    ```
+    R1#conf t
+    R1(config)#interface f0/0
+    R1(config-if)#ip nat inside
+    R1(config-if)#exit
+
+    R1(config)#interface f1/0
+    R1(config-if)#ip nat inside
+    R1(config-if)#exit
+
+    R1(config)#interface f2/0
+    R1(config-if)#ip nat outside
+    R1(config-if)#exit
+
+    R1(config)#ip nat inside source list 1 interface f2/0 overload
+    R1(config)#access-list 1 permit any
+    ```
+    On informe tout le monde via OSPF que **Routeur1** est la passerelle par defaut pour accéder à internet.
+    ```
+    R1(config)#router ospf 1
+    R1(config-router)#default-information originate
+    ```
+    Check que ça à bien marcher
+    ```
+    R3#ping 8.8.8.8
+
+    Type escape sequence to abort.
+    Sending 5, 100-byte ICMP Echos to 8.8.8.8, timeout is 2 seconds:
+    !!!!!
+    Success rate is 100 percent (5/5), round-trip min/avg/max = 12/26/52 ms
+    ```
+
+## 2. Conf des Switchs
+  * Configuration de **Switch1**
+    * **S1** sera configuré en mode `access` entre **client1** et **client2**...
+      ```
+      Switch1(config)#vlan 10
+      Switch1(config-vlan)#name compta
+      Switch1(config-vlan)#exit
+
+      Switch1(config)#vlan 20
+      Switch1(config-vlan)#name admin
+      Switch1(config-vlan)#exit
+
+      Switch1(config)#interface e0/2
+      Switch1(config-if)#switchport mode access
+      Switch1(config-if)#switchport access vlan 10
+      Switch1(config-if)#exit
+
+      Switch1(config)#interface e0/3
+      Switch1(config-if)#switchport mode access
+      Switch1(config-if)#switchport access vlan 20
+      Switch1(config-if)#exit
+      ```
+    * ... et en mode `trunk` entre **S2** et **Routeur3**
+      ```
+      Switch2(config)#interface e0/0
+      Switch2(config-if)#switchport trunk encapsulation dot1q
+      Switch2(config-if)#switchport mode trunk
+      Switch2(config-if)#exit
+
+      Switch2(config)#interface e0/1
+      Switch2(config-if)#switchport trunk encapsulation dot1q
+      Switch2(config-if)#switchport mode trunk
+      Switch2(config-if)#exit
+      ```
+  * Configuration de **Switch2**
+    * **S1** sera configuré en mode `access` entre **client3**...
+      ```
+      Switch1(config)#vlan 30
+      Switch1(config-vlan)#name serveurs
+      Switch1(config-vlan)#exit
+
+      Switch1(config)#interface e0/2
+      Switch1(config-if)#switchport mode access
+      Switch1(config-if)#switchport access vlan 30
+      Switch1(config-if)#exit
+      ```
+    * ... et en mode `trunk` entre **S1**
+      ```
+      Switch2(config)#interface e0/1
+      Switch2(config-if)#switchport trunk encapsulation dot1q
+      Switch2(config-if)#switchport mode trunk
+      Switch2(config-if)#exit
+      ```
+
+    * Inter-vlanning
+      on va découper l'interface de **Routeur3** dans le réseau des VMs en 3 morceaux, sous-interfaces
+      ```
+      R3#conf t
+      R3(config)#interface f2/0.1
+      R3(config-subif)#encap dot1q 10
+      R3(config-subif)#ip add 10.4.110.254 255.255.255.0
+      R3(config-subif)#no shut
+      R3(config-subif)#exit
+
+      R3(config)#interface f2/0.2
+      R3(config-subif)#encap dot1q 20
+      R3(config-subif)#ip add 10.4.120.254 255.255.255.0
+      R3(config-subif)#no shut
+      R3(config-subif)#exit
+
+      R3(config)#interface f2/0.3
+      R3(config-subif)#encap dot1q 30
+      R3(config-subif)#ip add 10.4.130.254 255.255.255.0
+      R3(config-subif)#no shut
+      R3(config-subif)#exit
+
+      ```
+
+## 3. Conf des VMs
+  * Hostnames
+    ```
+    [arnaud@localhost ~]$ echo 'client1' | sudo tee /etc/hostname
+
+    [arnaud@localhost ~]$ echo 'client2' | sudo tee /etc/hostname
+
+    [arnaud@localhost ~]$ echo 'serveur1' | sudo tee /etc/hostname
+    ```
+
+  * IPs (exemple pour **client1**)
+    ```
+
+    [arnaud@client1 ~]$ cat /etc/sysconfig/network-scripts/ifcfg-enp0s3
+    ...
+    BOOTPROTO=static
+    IPADDR=10.4.110.10
+    NETMASK=255.255.255.0
+    GATEWAY=10.4.110.254
+    ```
+
+Les VMs peuvent maintenant ce ping.
+
+## 4. Installation d'un service d'infra (serveur web)
+
+* Installation de `nginx` sur **server1** :
+
+    ```
+    sudo yum install nginx
+    ```
+
+* On ouvre le port 80 du firewall en tcp :
+
+    ```
+    sudo firewall-cmd --add-port=80/tcp --permanent
+    sudo firewall-cmd --reload
+    ```
+
+* Sur les VMs clientes ont peut faire un wget vers **server1** :
+
+    * Exemple sur **client1** :
+    ```
+    [arnaud@lclient1 ~]$ wget 10.4.130.10
+    --2019-03-31 18:02:38-- http://10.4.130.10/
+    HTTP request sent, awaiting response... 200 OK
+    Length: 3700 (3.6K) [text/html]
+    Saving to: 'index.hml.1'
+
+    100%[==========================================================>] 3,700         --.--L/s    in 0s
+
+    2019-03-31 18:02:39 (402 MB/s) - 'index.html.1' saved [3700/3700]
+    ```
+
+
+
+
+
+
+
