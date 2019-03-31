@@ -488,7 +488,7 @@ Je vous conseille de vous organiser pour ne pas que ce soit l'enfer
   <img src="./relatives/infra_v2.jpg" title="Lab 4 : Infra">
 </p>
 
-* Tableau d'adressage
+### > Tableau d'adressage
 Hosts | `10.4.110.0/24` |  `10.4.120.0/24` |  `10.4.130.0/24` | `10.4.100.0/30` | `10.4.100.4/30` | `10.4.100.8/30` | `10.4.100.12/30`
 --- | --- | --- | --- | --- | --- | --- | ---
 `client1` | `10.4.110.10/24` | x | x | x | x | x | x
