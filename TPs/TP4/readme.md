@@ -4,9 +4,18 @@
   <img src="./relatives/infra.png" title="TP 4 Campus : Infra">
 </p>
 
+
+
+
+
+
+
+
+
+
 ## Tableaux d'adressage
 
-Hosts | `10.4.100.0` | `10.4.100.4` | `10.4.100.8` | `10.4.100.12`
+Hosts | `10.4.100.0/30` | `10.4.100.4/30` | `10.4.100.8/30` | `10.4.100.12/30`
 --- | --- | --- | --- | ---
 `router1` | `10.4.100.1` | x | x | `10.4.100.14`
 `router2` | `10.4.100.2` | `10.4.100.5` | x | x
@@ -16,25 +25,40 @@ Hosts | `10.4.100.0` | `10.4.100.4` | `10.4.100.8` | `10.4.100.12`
 
 
 
+
+
+
+
+* Les salles sont isolée de façon à empecher les petits génies d'embeter leurs collègues.
+* On va faire des (trop) gros réseau, comme ça on a de la place pour plus tard, si on veux rajouter des machines
+
+
+
+
+
 VLAN | nom | réseau | description
 --- | --- | --- | ---
-`101` | `client101` | `10.4.10.0/25` | `clients batiment 1 salle 1`
-`102` | `client102` | `10.4.11.0/25` | `clients batiment 1 salle 2`
-`103` | `client103` | `10.4.12.0/25` | `clients batiment 1 salle 3`
+`101` | `etu101` | `10.4.11.0/25` | `étudiants batiment 1 salle 1`
+`102` | `etu102` | `10.4.12.0/25` | `étudiants batiment 1 salle 2`
+`103` | `etu103` | `10.4.13.0/25` | `étudiants batiment 1 salle 3`
 `...` | `...` | `...` | `...`
-`309` | `client309` | `10.4.38.0/25` | `clients batiment 3 salle 9`
-`310` | `client310` | `10.4.39.0/25` | `clients batiment 3 salle 10`
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
-`` | `` | `` | ``
+`309` | `etu309` | `10.4.39.0/25` | `étudiants batiment 3 salle 9`
+`310` | `etu310` | `10.4.40.0/25` | `étudiants batiment 3 salle 10`
+`501` | `profs` | `10.4.101.0/24` | 
+`10` | `admins` | `10.4.102.0/28` | 
+`20` | `serveurs1` | `10.4.102.68/27` | `serveurs publiques (pour les étudiants)`
+`21` | `serveurs2` | `10.4.102.124/27 ` | `serveurs privés (pour les profs/admins)`
+`30` | `cameras` | `10.4.102.192/27` | 
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -55,7 +79,7 @@ Comme pour le dernier TP on va faire une boucle avec les **routeurs** mais cette
 
 
 ### Switchs
-Configuration d'**STP** sur le/les **router** de backbone
+Configuration d'**STP**
 
 
 
