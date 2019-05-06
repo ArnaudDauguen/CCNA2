@@ -61,18 +61,6 @@ VLAN | nom | réseau | description
 
 
 
-//conf profs et suivants
-
-interface f2/0.501
-encap dot1q 501
-ip add 10.4.11.126 255.255.255.128
-no shut
-exit
-
-
-
-
-
 
 
 
@@ -129,16 +117,17 @@ Comme pour le dernier TP on va faire une boucle avec les **routeurs** mais cette
   R3#conf t
   R3(config)#interface f2/0.101
   R3(config-subif)#encap dot1q 101
-  R3(config-subif)#ip add 10.4.11.126 255.255.255.128
+  R3(config-subif)#ip add 10.4.11.125 255.255.255.128
   R3(config-subif)#no shut
   R3(config-subif)#exit
   
-  R3(config)#interface f2/0.102
-  R3(config-subif)#encap dot1q 102
-  R3(config-subif)#ip add 10.4.12.126 255.255.255.128
+  R3(config)#interface f2/0.201
+  R3(config-subif)#encap dot1q 201
+  R3(config-subif)#ip add 10.4.21.125 255.255.255.128
   R3(config-subif)#no shut
   R3(config-subif)#exit
 
+  // et de même pour les autres VLANs
   ```
 
 
@@ -148,20 +137,133 @@ Comme pour le dernier TP on va faire une boucle avec les **routeurs** mais cette
   **HSRP** à pour objectif de faire un peu de magie (c'est plus clair une fois compris). Le but c'est de faire, en gros, fusionner 2 routeurs pour que s'il y en a un qui meurt l'autre prenne sa place.
   
   Un routeur fait son job, l'autre attend, avec plus ou moins d'impatience selon affinitées, que son pote décède pour prendre sa place.
-  La magie est toute simple, on donne une même ip virtuelle au deux routeur. Juste ça...
+  La magie est toute simple, on donne une même ip virtuelle aux deux routeurs. Juste ça...
   
   Sauf que nous, on a un autre problème. On doit faire 8 sous-interface (mais normalement 33)
   Donc on va "s'amuser" à faire 8 ips virtuelles
 
   8 vIPs pour 8 VLANs : 3 salles, admins, profs, serveurs1, serveurs2 et cameras
 
+  * Exemple pour le premier réseau
   ```
+  R2(config)#interface f2/0.10
+    // priorité du routeur (pour savoir lequel sera utilisé en premier) (on met 110 comme ça on se garde de la place au cas ou)
+  R2(config-subif)#standby 10 priority 110
+    // forcer les éléctions de routeur
+  R2(config-subif)#standby 10 preempt
+    // définition de l'ip virtuelle, commune aux deux routeurs
+  R2(config-subif)#standby 10 ip 10.4.201.14
 
+  R3(config)#interface f2/0.10
+  R3(config-subif)#standby 10 priority 120
+  R3(config-subif)#standby 10 preempt
+  R3(config-subif)#standby 10 ip 10.4.201.14
   
   ```
+  * On a disposition que les groupes HSRP de 0 (défaut) ) 255. Donc les deux derniers réseaux ne seront pas rangés de la même façon que les VLANs.
 
 ### Switchs
-Configuration d'**STP**
+
+( J'ai perdu un temps fou avec les switches qui lagent. 2h pour juste configurer access/trunk -__- )
+
+#### Switchs de Core
+* Afin d'éviter les désagréments d'une tempête de broadcast notamment, nous allons mettre en place **STP** (Spanning Tree Protocol). Il va s'occuper de dconnecter automatiquement les ports en trop.
+
+* Conf de **IOU2** (puisqu'il est sous **R2**)
+  ```
+
+
+  ```
+
+#### Switchs de Distribution
+* Comme leurs noms l'indiquent, il s'agit de switchs de distribution donc on rien à faire à part configurer tous les ports en mode **trunk**.
+* voila l'exemple pour la batiment 1, **Bat 1**
+
+
+  ```
+  Bat1#conf t
+  Bat1(config)#int e0/0
+  Bat1(config-if)#switchport trunk encapsulation dot1q
+  Bat1(config-if)#switchport mode trunk
+  Bat1(config-if)#exit
+
+  Bat1(config)#int e0/1
+  Bat1(config-if)#switchport trunk encapsulation dot1q
+  Bat1(config-if)#switchport mode trunk
+  Bat1(config-if)#exit
+
+  Bat1(config)#int e0/3
+  Bat1(config-if)#switchport trunk encapsulation dot1q
+  Bat1(config-if)#switchport mode trunk
+  Bat1(config-if)#exit
+
+  Bat1(config)#int e1/0
+  Bat1(config-if)#switchport trunk encapsulation dot1q
+  Bat1(config-if)#switchport mode trunk
+  Bat1(config-if)#exit
+
+  Bat1(config)#int e1/1
+  Bat1(config-if)#switchport trunk encapsulation dot1q
+  Bat1(config-if)#switchport mode trunk
+  Bat1(config-if)#exit
+  ```
+
+
+#### Switchss d'Access
+* Le port d'entré (celui relié au switch du batiment) est en mode **trunk**
+* Les ports pour les élèves sont en mode **access** et configurés sur le VLAN de la salle
+* Le port du professeur est en mode **access** lui aussi mais configuré sur le VLAN des professeurs.
+* Dans notre cas
+  * on utilise un switch à la place d'une borne Wifi mais ça marche snesiblement pareil (juste que la on est branché au lieu de regarder les MACs)
+  * pour le plaisir et la survie de mon PC, on ne simule qu'une salle par batiment et chaque salle contient 1 elève et 1 professeur.
+
+Et voici la conf du switch de la 1ere salle du Batiment 1, **Wifi101**
+
+
+conf t
+int e0/0
+switchport trunk encapsulation dot1q
+switchport mode trunk
+exit
+int e0/2
+switchport mode access
+switchport access vlan 101
+exit
+int e3/3
+switchport mode access
+switchport access vlan 501
+exit
+
+
+
+
+
+  ```
+  Wifi101#conf t
+
+  Wifi101(config)#int e0/0
+  Wifi101(config-if)#switchport trunk encapsulation dot1q
+  Wifi101(config-if)#switchport mode trunk
+  Wifi101(config-if)#exit
+
+  Wifi101(config)#int e0/2
+  Wifi101(config-if)#switchport mode access
+  Wifi101(config-if)#switchport access vlan 101
+
+  
+  Wifi101(config)#interface e3/3
+  Wifi101(config-if)#switchport mode access
+  Wifi101(config-if)#switchport access vlan 501
+
+  ```
+
+
+
+
+
+
+
+
 
 
 
